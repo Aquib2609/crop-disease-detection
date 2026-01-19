@@ -6,9 +6,7 @@ The system allows users to upload a leaf image and receive top-3 disease predict
 
 🚀 Live Demo
 
-🔗 Hugging Face Space:
-👉 Add your Hugging Face URL here
-https://huggingface.co/spaces/Aquib2609/crop-disease-detection
+🔗 Hugging Face Space:https://huggingface.co/spaces/Aquib2609/crop-disease-detection
 
 
 📌 Key Features
