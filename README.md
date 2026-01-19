@@ -3,11 +3,13 @@
 An end-to-end, explainable AI application for detecting plant leaf diseases from images using Deep Learning and Computer Vision.
 The system allows users to upload a leaf image and receive top-3 disease predictions with confidence scores, disease descriptions & remedies, and Grad-CAM heatmaps to visually explain the model’s decision.
 
+
 🚀 Live Demo
 
 🔗 Hugging Face Space:
 👉 Add your Hugging Face URL here
 https://huggingface.co/spaces/Aquib2609/crop-disease-detection
+
 
 📌 Key Features
 
@@ -25,6 +27,7 @@ https://huggingface.co/spaces/Aquib2609/crop-disease-detection
 
 ✅ Deployed on Hugging Face Spaces
 
+
 🧠 Model Overview
 
 Architecture: MobileNetV2 (Transfer Learning)
@@ -39,11 +42,13 @@ Validation Accuracy: ~94%
 
 The model was fine-tuned to classify 38 different crop–disease categories, achieving strong generalization and robustness.
 
+
 📊 Explainability with Grad-CAM
 
 To ensure transparency and trust, the application uses Grad-CAM (Gradient-weighted Class Activation Mapping) to highlight regions of the leaf image that influenced the model’s prediction.
 
 This helps verify that the model focuses on disease-affected areas rather than background noise.
+
 
 🧪 Example Workflow
 
