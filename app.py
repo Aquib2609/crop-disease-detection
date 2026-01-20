@@ -40,7 +40,7 @@ def load_model():
         repo_id="Aquib2609/Crop-disease-detection",
         filename="mobilenetv2_crop_disease.h5"
     )
-    return tf.keras.models.load_model(model_path)
+    return tf.keras.models.load_model(model_path,compile=False)
 
 model = None  # Do NOT load at startup
 
