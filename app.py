@@ -3,55 +3,58 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 import os
-import cv2
+from huggingface_hub import hf_hub_download
 
 # ==================================================
-# Resolve BASE directory safely
+# Page config
 # ==================================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# ==================================================
-# Load trained model (ABSOLUTE PATH)
-# ==================================================
-MODEL_PATH = os.path.join(
-    BASE_DIR,
-    "..",
-    "models",
-    "mobilenetv2_crop_disease.h5"
+st.set_page_config(
+    page_title="Crop Disease Detection",
+    layout="centered"
 )
 
-if not os.path.exists(MODEL_PATH):
-    st.error(f"❌ Model file not found at: {MODEL_PATH}")
+st.title("🌱 Crop Disease Detection")
+st.markdown(
+    "Upload a **leaf image** to predict the **crop disease**, view **confidence scores**, "
+    "and see **possible treatments**."
+)
+
+# ==================================================
+# Load class names from classes.txt (CRITICAL FIX)
+# ==================================================
+CLASSES_PATH = "classes.txt"
+
+if not os.path.exists(CLASSES_PATH):
+    st.error("❌ classes.txt file not found in repository.")
     st.stop()
 
+with open(CLASSES_PATH, "r") as f:
+    CLASS_NAMES = [line.strip() for line in f if line.strip()]
+
+# ==================================================
+# Lazy load model from Hugging Face Model Hub
+# ==================================================
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model(MODEL_PATH)
+    model_path = hf_hub_download(
+        repo_id="Aquib2609/Crop-disease-detection",
+        filename="mobilenetv2_crop_disease.h5"
+    )
+    return tf.keras.models.load_model(model_path)
 
-model = load_model()
-
-# ==================================================
-# Load class names safely
-# ==================================================
-DATASET_TRAIN_PATH = os.path.join(
-    BASE_DIR,
-    "..",
-    "dataset",
-    "PlantVillage",
-    "train"
-)
-
-if not os.path.exists(DATASET_TRAIN_PATH):
-    st.error("❌ Dataset folder not found for loading class names.")
-    st.stop()
-
-CLASS_NAMES = [
-    name.replace("___", " - ").replace("_", " ")
-    for name in sorted(os.listdir(DATASET_TRAIN_PATH))
-]
+model = None  # Do NOT load at startup
 
 # ==================================================
-# Label normalization (CRITICAL FIX)
+# Image preprocessing
+# ==================================================
+def preprocess_image(img):
+    img = img.resize((224, 224))
+    img = np.array(img) / 255.0
+    img = np.expand_dims(img, axis=0)
+    return img
+
+# ==================================================
+# Label normalization (for disease info mapping)
 # ==================================================
 def normalize_label(label: str) -> str:
     return (
@@ -63,7 +66,7 @@ def normalize_label(label: str) -> str:
     )
 
 # ==================================================
-# Disease descriptions & remedies (NORMALIZED KEYS)
+# Disease descriptions & remedies (OPTIONAL INFO)
 # ==================================================
 DISEASE_INFO = {
     normalize_label("Potato - Early blight"): {
@@ -83,62 +86,10 @@ DISEASE_INFO = {
 # ==================================================
 # Streamlit UI
 # ==================================================
-st.set_page_config(
-    page_title="Crop Disease Detection",
-    layout="centered"
-)
-
-st.title("🌱 Crop Disease Detection")
-st.markdown(
-    "Upload a **leaf image** to predict the **crop disease**, view **confidence scores**, "
-    "see **possible treatments**, and understand **model attention using Grad-CAM**."
-)
-
 uploaded_file = st.file_uploader(
     "📤 Upload leaf image",
     type=["jpg", "jpeg", "png"]
 )
-
-# ==================================================
-# Image preprocessing
-# ==================================================
-def preprocess_image(img):
-    img = img.resize((224, 224))
-    img = np.array(img) / 255.0
-    img = np.expand_dims(img, axis=0)
-    return img
-
-# ==================================================
-# Grad-CAM utilities
-# ==================================================
-def make_gradcam_heatmap(img_array, model, last_conv_layer_name):
-    grad_model = tf.keras.models.Model(
-        [model.inputs],
-        [model.get_layer(last_conv_layer_name).output, model.output]
-    )
-
-    with tf.GradientTape() as tape:
-        conv_outputs, predictions = grad_model(img_array)
-        pred_index = tf.argmax(predictions[0])
-        loss = predictions[:, pred_index]
-
-    grads = tape.gradient(loss, conv_outputs)
-    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-
-    conv_outputs = conv_outputs[0]
-    heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]
-    heatmap = tf.squeeze(heatmap)
-
-    heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
-    return heatmap.numpy()
-
-def overlay_gradcam(image, heatmap, alpha=0.4):
-    img = np.array(image)
-    heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
-    heatmap = np.uint8(255 * heatmap)
-    heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-    superimposed_img = heatmap * alpha + img
-    return np.uint8(superimposed_img)
 
 # ==================================================
 # Prediction logic
@@ -150,7 +101,13 @@ if uploaded_file is not None:
     processed_image = preprocess_image(image)
 
     if st.button("🔍 Predict Disease"):
-        with st.spinner("Analyzing leaf... 🌿"):
+
+        with st.spinner("Downloading model (first time) and analyzing leaf... 🌿"):
+
+            # Lazy load model only when needed
+            if model is None:
+                model = load_model()
+
             preds = model.predict(processed_image)[0]
 
         # Top-3 predictions
@@ -179,17 +136,4 @@ if uploaded_file is not None:
                 else:
                     st.info("ℹ️ Disease information not available yet.")
 
-        # ==================================================
-        # Grad-CAM Visualization
-        # ==================================================
-        st.subheader("🔥 Model Attention (Grad-CAM)")
-
-        last_conv_layer_name = "Conv_1"  # MobileNetV2 last conv layer
-        heatmap = make_gradcam_heatmap(processed_image, model, last_conv_layer_name)
-        gradcam_image = overlay_gradcam(image, heatmap)
-
-        st.image(
-            gradcam_image,
-            caption="Grad-CAM Heatmap (highlighted regions influenced the prediction)",
-            use_column_width=True
-        )
+        
