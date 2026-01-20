@@ -1,6 +1,7 @@
 streamlit
 numpy
 pillow
-tensorflow
 opencv-python
 huggingface-hub
+tensorflow==2.12.0
+keras==2.12.0
