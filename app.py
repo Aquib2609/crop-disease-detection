@@ -32,17 +32,16 @@ with open(CLASSES_PATH, "r") as f:
     CLASS_NAMES = [line.strip() for line in f if line.strip()]
 
 # ==================================================
-# Lazy load model from Hugging Face Model Hub
+# Lazy load model from Hugging Face Model Hub (SAFE PATTERN)
 # ==================================================
 @st.cache_resource
-def load_model():
+def get_model():
     model_path = hf_hub_download(
         repo_id="Aquib2609/Crop-disease-detection",
         filename="mobilenetv2_crop_disease.h5"
     )
-    return tf.keras.models.load_model(model_path,compile=False)
-
-model = None  # Do NOT load at startup
+    # compile=False avoids optimizer / loss deserialization issues
+    return tf.keras.models.load_model(model_path, compile=False)
 
 # ==================================================
 # Image preprocessing
@@ -104,9 +103,8 @@ if uploaded_file is not None:
 
         with st.spinner("Downloading model (first time) and analyzing leaf... 🌿"):
 
-            # Lazy load model only when needed
-            if model is None:
-                model = load_model()
+            # Always get model from cache
+            model = get_model()
 
             preds = model.predict(processed_image)[0]
 
@@ -135,5 +133,6 @@ if uploaded_file is not None:
                     st.write(f"**Remedy:** {info['remedy']}")
                 else:
                     st.info("ℹ️ Disease information not available yet.")
+
 
         
