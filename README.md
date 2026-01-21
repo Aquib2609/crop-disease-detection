@@ -6,7 +6,7 @@ The system allows users to upload a leaf image and receive top-3 disease predict
 
 🚀 Live Demo
 
-🔗 Hugging Face Space:https://huggingface.co/spaces/Aquib2609/crop-disease-detection
+🔗 Streamlit Cloud :https://crop-disease-detection-fs4zyunykbg4fmuuef6l4h.streamlit.app/
 
 
 📌 Key Features
